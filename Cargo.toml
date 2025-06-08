@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "jl-proc",
+    "jl-cat",
+]
+resolver = "2"
+
+[patch.crates-io]
+jl-proc = { path = "jl-proc" }
+
