@@ -1,0 +1,9 @@
+{
+  "cSpell.ignorePaths": [
+    ".git/{info,lfs,logs,refs,objects}/**",
+    ".git/{index,*refs,*HEAD}",
+    ".vscode",
+    "Cargo.toml",
+    "Cargo.lock"
+  ]
+}
