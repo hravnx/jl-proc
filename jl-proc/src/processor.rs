@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::{LineItem, LogEntry};
+use crate::{LineItem, LogEntryFormatter};
 
 // --------------------------------------------------------------------------
 
@@ -14,6 +14,7 @@ pub struct ProcessorOptions {
 
 /// A processor for log entries that formats them as lines of text.
 pub struct LogEntryProcessor {
+    /// The options for processing log entries.
     pub options: ProcessorOptions,
 }
 
@@ -24,9 +25,9 @@ impl LogEntryProcessor {
 
     pub fn process_entries<W: Write>(
         &self,
-        w: &mut W,
         entries: impl Iterator<Item = LineItem>,
         source: &str,
+        fmt: &mut LogEntryFormatter<W>,
     ) -> std::io::Result<()> {
         let mut continuous_empty_lines = 0;
 
@@ -34,37 +35,22 @@ impl LogEntryProcessor {
             match entry {
                 LineItem::Entry(log_entry) => {
                     if continuous_empty_lines > 1 {
-                        writeln!(
-                            w,
-                            "{}: {} empty lines skipped -----------",
-                            source, continuous_empty_lines
-                        )?;
+                        fmt.empty_lines(continuous_empty_lines, source)?;
                         continuous_empty_lines = 0;
                     }
-                    self.process_entry(w, log_entry)?;
+                    fmt.format(&log_entry)?;
                 }
                 LineItem::EmptyLine(_) => {
                     continuous_empty_lines += 1;
                 }
                 LineItem::ReadError(line_no, e) => {
-                    writeln!(w, "{}({}): Read error {}", source, line_no, e)?;
+                    fmt.read_error(line_no, source, e)?;
                 }
                 LineItem::ParseError(line_no, e) => {
-                    writeln!(w, "{}({}): Parse error {}", source, line_no, e)?;
+                    fmt.parse_error(line_no, source, e)?;
                 }
             }
         }
-        Ok(())
-    }
-
-    fn process_entry<W: Write>(&self, w: &mut W, entry: LogEntry) -> std::io::Result<()> {
-        writeln!(
-            w,
-            "{} [{:?}] {}",
-            entry.timestamp_short(),
-            entry.level,
-            entry.message
-        )?;
         Ok(())
     }
 }
@@ -75,7 +61,7 @@ impl LogEntryProcessor {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::SeverityLevel as SL;
+    use crate::{LogEntry, SeverityLevel as SL};
 
     use super::*;
 
@@ -100,7 +86,8 @@ mod tests {
         ];
         let processor = LogEntryProcessor::new(options);
         let mut output = Vec::new();
-        let result = processor.process_entries(&mut output, entries.into_iter(), "test.log");
+        let mut formatter = LogEntryFormatter::new(false, &mut output);
+        let result = processor.process_entries(entries.into_iter(), "test.log", &mut formatter);
         assert!(result.is_ok());
         let output_str = String::from_utf8(output).unwrap();
         let expected = "10:32:51.123 [Info] A log message\n\
