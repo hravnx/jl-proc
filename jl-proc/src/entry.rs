@@ -10,22 +10,30 @@ use serde::Deserialize;
 /// 'timing', which aren't really levels but categories.
 ///
 /// See https://docs.npmjs.com/cli/v8/using-npm/logging
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum SeverityLevel {
-    #[serde(rename = "fatal")]
     Fatal,
-    #[serde(rename = "error")]
     Error,
-    #[serde(rename = "warn")]
     Warn,
-    #[serde(rename = "info")]
     Info,
-    #[serde(rename = "debug")]
     Debug,
-    #[serde(rename = "verbose")]
     Verbose,
-    #[serde(rename = "silly")]
-    Silly,
+    Other(String), // For any other string that doesn't match the above
+}
+
+impl SeverityLevel {
+    /// Returns the string representation of the severity level.
+    pub fn as_str(&self) -> &str {
+        match self {
+            SeverityLevel::Fatal => "ftl",
+            SeverityLevel::Error => "err",
+            SeverityLevel::Warn => "wrn",
+            SeverityLevel::Info => "inf",
+            SeverityLevel::Debug => "dbg",
+            SeverityLevel::Verbose => "vrb",
+            SeverityLevel::Other(s) => s.as_str(),
+        }
+    }
 }
 
 /// A single log entry from a file/stream of json line-delimited log entries.
@@ -45,7 +53,7 @@ pub enum SeverityLevel {
 /// let log_entry: LogEntry = serde_json::from_str(json).unwrap();
 /// assert_eq!(log_entry.timestamp, "2024-03-15T12:34:56.123Z");
 /// assert_eq!(log_entry.timestamp_short(), "12:34:56.123");
-/// assert_eq!(log_entry.level, SeverityLevel::Info);
+/// assert_eq!(log_entry.level(), SeverityLevel::Info);
 /// assert_eq!(log_entry.message, "This is a log message");
 /// assert_eq!(log_entry.extra.len(), 2);
 /// ```
@@ -53,7 +61,7 @@ pub enum SeverityLevel {
 #[allow(unused)]
 pub struct LogEntry {
     pub timestamp: String,
-    pub level: SeverityLevel,
+    pub level: String,
     pub message: String,
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
@@ -72,9 +80,22 @@ impl LogEntry {
     /// }"#;
     /// let log_entry: LogEntry = serde_json::from_str(json).unwrap();
     /// assert_eq!(log_entry.timestamp_short(), "12:34:56.123");
+    /// assert_eq!(log_entry.level(), SeverityLevel::Info);
     /// ```
     pub fn timestamp_short(&self) -> &str {
         &self.timestamp[11..23]
+    }
+
+    pub fn level(&self) -> SeverityLevel {
+        match self.level.as_str() {
+            "fatal" => SeverityLevel::Fatal,
+            "error" => SeverityLevel::Error,
+            "warn" | "warning" => SeverityLevel::Warn,
+            "info" => SeverityLevel::Info,
+            "debug" => SeverityLevel::Debug,
+            "verbose" | "trace" | "silly" => SeverityLevel::Verbose,
+            other => SeverityLevel::Other(other.to_string()),
+        }
     }
 }
 
@@ -97,7 +118,7 @@ mod tests {
         let log_entry: LogEntry = serde_json::from_str(json).unwrap();
         assert_eq!(log_entry.timestamp, "2024-03-15T12:34:56.042Z");
         assert_eq!(log_entry.timestamp_short(), "12:34:56.042");
-        assert_eq!(log_entry.level, SeverityLevel::Info);
+        assert_eq!(log_entry.level(), SeverityLevel::Info);
         assert_eq!(log_entry.message, "This is a log message");
         assert_eq!(log_entry.extra.len(), 2);
         assert_eq!(
