@@ -22,16 +22,16 @@ pub enum SeverityLevel {
 }
 
 impl SeverityLevel {
-    /// Returns the string representation of the severity level.
-    pub fn as_str(&self) -> &str {
+    /// Returns the numeric value of the severity level.
+    pub fn as_u8(&self) -> usize {
         match self {
-            SeverityLevel::Fatal => "ftl",
-            SeverityLevel::Error => "err",
-            SeverityLevel::Warn => "wrn",
-            SeverityLevel::Info => "inf",
-            SeverityLevel::Debug => "dbg",
-            SeverityLevel::Verbose => "vrb",
-            SeverityLevel::Other(s) => s.as_str(),
+            SeverityLevel::Fatal => 0,
+            SeverityLevel::Error => 1,
+            SeverityLevel::Warn => 2,
+            SeverityLevel::Info => 3,
+            SeverityLevel::Debug => 4,
+            SeverityLevel::Verbose => 5,
+            SeverityLevel::Other(_) => 6, // Other is the lowest priority
         }
     }
 }

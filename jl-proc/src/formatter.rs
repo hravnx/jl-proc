@@ -1,39 +1,57 @@
 use std::io::Write;
 
-use owo_colors::OwoColorize;
-
-use crate::LogEntry;
+use crate::{LogEntry, ansi_color};
 
 // --------------------------------------------------------------------------
 
 /// A formatter for log entries that writes them to a given writer.
 pub struct LogEntryFormatter<W: Write> {
-    use_color: bool,
     writer: W,
+    timestamp_format: &'static str,
+    level_table: [&'static str; 7],
+    eol: &'static str,
 }
 
 impl<W: Write> LogEntryFormatter<W> {
     /// Creates a new `LogEntryFormatter`.
     pub fn new(use_color: bool, writer: W) -> Self {
-        LogEntryFormatter { use_color, writer }
+        let (timestamp_format, level_table, eol) = if use_color {
+            (
+                ansi_color!(fg:4),
+                DEFAULT_LEVEL_TABLE_COLOR,
+                concat!(ansi_color!(), "\n"),
+            )
+        } else {
+            ("", DEFAULT_LEVEL_TABLE, "\n")
+        };
+        Self {
+            level_table,
+            writer,
+            eol,
+            timestamp_format,
+        }
     }
 
     /// Formats a single log entry and writes it to the writer.
     pub fn format_entry(&mut self, entry: &LogEntry) -> std::io::Result<()> {
-        if self.use_color {
-            ColorFormatImpl::entry(&mut self.writer, entry)
-        } else {
-            NoColorFormatImpl::entry(&mut self.writer, entry)
-        }
+        write!(
+            self.writer,
+            "{}{}",
+            self.timestamp_format,
+            entry.timestamp_short()
+        )?;
+        write!(self.writer, "{}", self.level_table[entry.level().as_u8()])?;
+        write!(self.writer, "{}", entry.message)?;
+        write!(self.writer, "{}", self.eol)
     }
 
     /// Formats a number of empty lines and writes it to the writer.
     pub fn format_empty_lines(&mut self, n: usize, source: &str) -> std::io::Result<()> {
-        if self.use_color {
-            ColorFormatImpl::empty_lines(&mut self.writer, n, source)
-        } else {
-            NoColorFormatImpl::empty_lines(&mut self.writer, n, source)
-        }
+        writeln!(
+            self.writer,
+            "{}: {} empty lines skipped -----------",
+            source, n
+        )
     }
 
     /// Formats a read error and writes it to the writer.
@@ -43,11 +61,7 @@ impl<W: Write> LogEntryFormatter<W> {
         source: &str,
         error: std::io::Error,
     ) -> std::io::Result<()> {
-        if self.use_color {
-            ColorFormatImpl::read_error(&mut self.writer, line_no, source, error)
-        } else {
-            NoColorFormatImpl::read_error(&mut self.writer, line_no, source, error)
-        }
+        writeln!(self.writer, "{}({}): Read error {}", source, line_no, error)
     }
 
     /// Formats a parse error and writes it to the writer.
@@ -57,127 +71,35 @@ impl<W: Write> LogEntryFormatter<W> {
         source: &str,
         error: serde_json::Error,
     ) -> std::io::Result<()> {
-        if self.use_color {
-            ColorFormatImpl::parse_error(&mut self.writer, line_no, source, error)
-        } else {
-            NoColorFormatImpl::parse_error(&mut self.writer, line_no, source, error)
-        }
+        writeln!(
+            self.writer,
+            "{}({}): Parse error {}",
+            source, line_no, error
+        )
     }
 }
 
 // --------------------------------------------------------------------------
 
-struct ColorFormatImpl;
+const DEFAULT_LEVEL_TABLE: [&str; 7] = [
+    " [fatal] ", // Fatal
+    " [error] ", // Error
+    " [warn]  ", // Warning
+    " [info]  ", // Info
+    " [debug] ", // Debug
+    " [verb]  ", // Verbose
+    " [other] ", // Other
+];
 
-impl ColorFormatImpl {
-    fn entry<W: Write>(mut w: W, entry: &LogEntry) -> std::io::Result<()> {
-        use crate::SeverityLevel as SL;
-        let level = entry.level();
-        let level_str = level.as_str();
-        let level = match level {
-            SL::Fatal => level_str.red().into_styled(),
-            SL::Error => level_str.red().into_styled(),
-            SL::Warn => level_str.yellow().into_styled(),
-            SL::Info => level_str.green().into_styled(),
-            SL::Debug => level_str.blue().into_styled(),
-            SL::Verbose => level_str.cyan().into_styled(),
-            SL::Other(_) => level_str.magenta().into_styled(),
-        };
-
-        writeln!(
-            w,
-            "{} [{}] {}",
-            entry.timestamp_short().green(),
-            level,
-            entry.message
-        )?;
-        Ok(())
-    }
-
-    fn empty_lines<W: Write>(mut w: W, n: usize, source: &str) -> std::io::Result<()> {
-        writeln!(
-            w,
-            "{}: {} empty lines skipped -----------",
-            source.bold(),
-            n.to_string().yellow()
-        )?;
-        Ok(())
-    }
-
-    fn read_error<W: Write>(
-        mut w: W,
-        line_no: usize,
-        source: &str,
-        error: std::io::Error,
-    ) -> std::io::Result<()> {
-        writeln!(
-            w,
-            "{}({}): Read error {}",
-            source.bold(),
-            line_no.to_string().red(),
-            error
-        )?;
-        Ok(())
-    }
-
-    fn parse_error<W: Write>(
-        mut w: W,
-        line_no: usize,
-        source: &str,
-        error: serde_json::Error,
-    ) -> std::io::Result<()> {
-        writeln!(
-            w,
-            "{}({}): Parse error {}",
-            source.bold(),
-            line_no.to_string().red(),
-            error
-        )?;
-        Ok(())
-    }
-}
-
-struct NoColorFormatImpl;
-
-impl NoColorFormatImpl {
-    fn entry<W: Write>(mut w: W, entry: &LogEntry) -> std::io::Result<()> {
-        writeln!(
-            w,
-            "{} [{}] {}",
-            entry.timestamp_short(),
-            entry.level().as_str(),
-            entry.message
-        )?;
-        Ok(())
-    }
-
-    fn empty_lines<W: Write>(mut w: W, n: usize, source: &str) -> std::io::Result<()> {
-        writeln!(
-            w,
-            "{}: {} empty lines skipped -----------",
-            source,
-            n.to_string()
-        )?;
-        Ok(())
-    }
-
-    fn read_error<W: Write>(
-        mut w: W,
-        line_no: usize,
-        source: &str,
-        error: std::io::Error,
-    ) -> std::io::Result<()> {
-        writeln!(w, "{}({}): Read error {}", source, line_no, error)?;
-        Ok(())
-    }
-
-    fn parse_error<W: Write>(
-        mut w: W,
-        line_no: usize,
-        source: &str,
-        error: serde_json::Error,
-    ) -> std::io::Result<()> {
-        writeln!(w, "{}({}): Parse error {}", source, line_no, error)?;
-        Ok(())
-    }
-}
+// See color table here https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
+//
+// Color names are from https://colornamer.robertcooper.me/
+const DEFAULT_LEVEL_TABLE_COLOR: [&str; 7] = [
+    concat!(ansi_color!(fg: 11, bg: 9), " [fatal] "), // Fatal ->  Yellow Red on red bg
+    concat!(ansi_color!(fg: 9), " [error] "),         // Error -> Red
+    concat!(ansi_color!(fg: 11), " [warn]  "),        // Warning -> Yellow
+    concat!(ansi_color!(fg: 254), " [info]  "),       // Info -> Titanium White
+    concat!(ansi_color!(fg: 6), " [verb]  "),         // Verbose -> Teal
+    concat!(ansi_color!(fg: 27), " [debug] "),        // Debug -> Bright Blue
+    concat!(ansi_color!(fg: 5), " [other] "),         // Other -> Purple
+];

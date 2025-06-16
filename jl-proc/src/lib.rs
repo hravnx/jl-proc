@@ -1,3 +1,4 @@
+mod ansi;
 mod entry;
 mod formatter;
 mod iterator;
