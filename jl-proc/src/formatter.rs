@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io::Write};
 
-use crate::{LogEntry, ansi_color};
+use crate::{LogEntry, ansi_color, ValuePrinter, ValuePrinterConfig};
 
 // --------------------------------------------------------------------------
 
@@ -9,7 +9,7 @@ pub struct LogEntryFormatter<W: Write> {
     writer: W,
     timestamp_format: &'static str,
     level_table: [&'static str; 7],
-
+    value_printer: ValuePrinter,
     eol: &'static str,
 }
 
@@ -25,9 +25,17 @@ impl<W: Write> LogEntryFormatter<W> {
         } else {
             ("", DEFAULT_LEVEL_TABLE, "\n")
         };
+        
+        let value_printer = ValuePrinter::new(ValuePrinterConfig {
+            use_color,
+            indent_size: 2,
+            max_width: 80,
+        });
+
         Self {
             level_table,
             writer,
+            value_printer,
             eol,
             timestamp_format,
         }
@@ -73,11 +81,8 @@ impl<W: Write> LogEntryFormatter<W> {
         extra: &HashMap<String, serde_json::Value>,
     ) -> std::io::Result<()> {
         if !extra.is_empty() {
-            write!(
-                self.writer,
-                "{}",
-                serde_json::to_string_pretty(extra).unwrap()
-            )?;
+            let value = serde_json::Value::Object(extra.clone().into_iter().collect());
+            self.value_printer.print(&mut self.writer, &value)?;
             write!(self.writer, "{}", self.eol)?;
         }
         Ok(())
