@@ -8,6 +8,7 @@ use crate::{LineItem, LogEntryFormatter};
 pub struct ProcessorOptions {
     /// if true, skip empty lines in the input
     pub skip_empty_lines: bool,
+    pub session_start: Option<String>,
 }
 
 // --------------------------------------------------------------------------
@@ -35,8 +36,15 @@ impl LogEntryProcessor {
             match entry {
                 LineItem::Entry(log_entry) => {
                     if continuous_empty_lines > 1 {
-                        fmt.format_empty_lines(continuous_empty_lines, source)?;
+                        if !self.options.skip_empty_lines {
+                            fmt.format_empty_lines(continuous_empty_lines, source)?;
+                        }
                         continuous_empty_lines = 0;
+                    }
+                    if let Some(session_start) = &self.options.session_start
+                        && log_entry.message.starts_with(session_start)
+                    {
+                        fmt.format_session_start(&log_entry)?;
                     }
                     fmt.format_entry(&log_entry)?;
                 }
@@ -69,19 +77,20 @@ mod tests {
     fn shows_sources_when_they_change() {
         let options = ProcessorOptions {
             skip_empty_lines: false,
+            session_start: None,
         };
         let entries = vec![
             LineItem::Entry(LogEntry {
                 timestamp: "2024-01-01T10:32:51.123Z".into(),
                 level: "info".into(),
                 message: "A log message".into(),
-                extra: HashMap::default(),
+                extras: HashMap::default(),
             }),
             LineItem::Entry(LogEntry {
                 timestamp: "2024-01-01T10:32:53.456Z".into(),
                 level: "warn".into(),
                 message: "Another log message".into(),
-                extra: HashMap::default(),
+                extras: HashMap::default(),
             }),
         ];
         let processor = LogEntryProcessor::new(options);

@@ -64,7 +64,7 @@ pub struct LogEntry {
     pub level: String,
     pub message: String,
     #[serde(flatten)]
-    pub extra: HashMap<String, serde_json::Value>,
+    pub extras: HashMap<String, serde_json::Value>,
 }
 
 impl LogEntry {
@@ -120,13 +120,13 @@ mod tests {
         assert_eq!(log_entry.timestamp_short(), "12:34:56.042");
         assert_eq!(log_entry.level(), SeverityLevel::Info);
         assert_eq!(log_entry.message, "This is a log message");
-        assert_eq!(log_entry.extra.len(), 2);
+        assert_eq!(log_entry.extras.len(), 2);
         assert_eq!(
-            log_entry.extra.get("user_id").unwrap(),
+            log_entry.extras.get("user_id").unwrap(),
             &serde_json::Value::from(42)
         );
         assert_eq!(
-            log_entry.extra.get("session_id").unwrap(),
+            log_entry.extras.get("session_id").unwrap(),
             &serde_json::Value::from("abc123")
         );
     }
