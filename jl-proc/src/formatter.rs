@@ -78,10 +78,7 @@ impl<W: Write> LogEntryFormatter<W> {
 
     /// Formats a number of empty lines and writes it to the writer.
     pub fn format_empty_lines(&mut self, n: usize, source: &str) -> std::io::Result<()> {
-        writeln!(
-            self.writer,
-            "{source}: {n} empty lines skipped -----------"
-        )
+        writeln!(self.writer, "{source}: {n} empty lines skipped -----------")
     }
 
     /// Formats the extras collection, if not empty
@@ -115,10 +112,7 @@ impl<W: Write> LogEntryFormatter<W> {
         source: &str,
         error: serde_json::Error,
     ) -> std::io::Result<()> {
-        writeln!(
-            self.writer,
-            "{source}({line_no}): Parse error {error}"
-        )
+        writeln!(self.writer, "{source}({line_no}): Parse error {error}")
     }
 }
 
