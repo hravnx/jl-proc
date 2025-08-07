@@ -81,9 +81,8 @@ impl<W: Write> LogEntryFormatter<W> {
         extra: &HashMap<String, serde_json::Value>,
     ) -> std::io::Result<()> {
         if !extra.is_empty() {
-            let value = serde_json::Value::Object(extra.clone().into_iter().collect());
-            self.value_printer.print(&mut self.writer, &value)?;
-            write!(self.writer, "{}", self.eol)?;
+            let obj: serde_json::Map<String, serde_json::Value> = extra.clone().into_iter().collect();
+            self.value_printer.print_object_contents(&mut self.writer, &obj, 2)?;
         }
         Ok(())
     }

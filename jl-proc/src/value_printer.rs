@@ -70,6 +70,41 @@ impl ValuePrinter {
         self.print_value(writer, value, 0)
     }
 
+    /// Print object contents without the top-level curly braces, with custom base indentation
+    pub fn print_object_contents<W: Write>(&self, writer: &mut W, obj: &serde_json::Map<String, Value>, base_indent: usize) -> Result<()> {
+        if obj.is_empty() {
+            return Ok(());
+        }
+
+        // Check if we should format compactly
+        let compact = self.should_format_compact_object(obj);
+
+        let entries: Vec<_> = obj.iter().collect();
+
+        if compact {
+            self.write_indent(writer, base_indent)?;
+            for (i, (key, value)) in entries.iter().enumerate() {
+                if i > 0 {
+                    write!(writer, "{}, {}", self.punctuation_color, self.reset_color)?;
+                }
+                write!(writer, "{}{}{}:{} ", self.key_color, key, self.punctuation_color, self.reset_color)?;
+                self.print_value(writer, value, base_indent)?;
+            }
+        } else {
+            for (i, (key, value)) in entries.iter().enumerate() {
+                self.write_indent(writer, base_indent)?;
+                write!(writer, "{}{}{}:{} ", self.key_color, key, self.punctuation_color, self.reset_color)?;
+                self.print_value(writer, value, base_indent + 1)?;
+                if i < entries.len() - 1 {
+                    write!(writer, "{},{}", self.punctuation_color, self.reset_color)?;
+                }
+                writeln!(writer)?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Internal method to print a value at a given indentation level
     fn print_value<W: Write>(&self, writer: &mut W, value: &Value, indent: usize) -> Result<()> {
         match value {
@@ -150,14 +185,14 @@ impl ValuePrinter {
                 if i > 0 {
                     write!(writer, "{}, {}", self.punctuation_color, self.reset_color)?;
                 }
-                write!(writer, "{}\"{}\"{}:{} ", self.key_color, key, self.punctuation_color, self.reset_color)?;
+                write!(writer, "{}{}{}:{} ", self.key_color, key, self.punctuation_color, self.reset_color)?;
                 self.print_value(writer, value, indent)?;
             }
         } else {
             for (i, (key, value)) in entries.iter().enumerate() {
                 writeln!(writer)?;
                 self.write_indent(writer, indent + 1)?;
-                write!(writer, "{}\"{}\"{}:{} ", self.key_color, key, self.punctuation_color, self.reset_color)?;
+                write!(writer, "{}{}{}:{} ", self.key_color, key, self.punctuation_color, self.reset_color)?;
                 self.print_value(writer, value, indent + 1)?;
                 if i < entries.len() - 1 {
                     write!(writer, "{},{}", self.punctuation_color, self.reset_color)?;
@@ -268,7 +303,7 @@ mod tests {
         printer.print(&mut output, &json!({"a": 1, "b": 2})).unwrap();
         let result = String::from_utf8(output).unwrap();
         // Note: HashMap iteration order is not guaranteed, so we check for both possibilities
-        assert!(result == "{\"a\": 1, \"b\": 2}" || result == "{\"b\": 2, \"a\": 1}");
+        assert!(result == "{a: 1, b: 2}" || result == "{b: 2, a: 1}");
     }
 
     #[test]
@@ -291,5 +326,27 @@ mod tests {
         assert!(result.contains('\n'));
         assert!(result.contains("users"));
         assert!(result.contains("Alice"));
+    }
+
+    #[test]
+    fn test_object_contents_without_braces() {
+        let printer = ValuePrinter::new(ValuePrinterConfig::default());
+        let mut output = Vec::new();
+
+        let obj = json!({"key1": "value1", "key2": 42}).as_object().unwrap().clone();
+        
+        printer.print_object_contents(&mut output, &obj, 2).unwrap();
+        let result = String::from_utf8(output).unwrap();
+        
+        // Should not contain curly braces
+        assert!(!result.contains('{'));
+        assert!(!result.contains('}'));
+        // Should have proper indentation (4 spaces = 2 * indent_size)
+        assert!(result.starts_with("    "));
+        // Should contain the key-value pairs
+        assert!(result.contains("key1"));
+        assert!(result.contains("value1"));
+        assert!(result.contains("key2"));
+        assert!(result.contains("42"));
     }
 }
