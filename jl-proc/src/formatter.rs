@@ -11,11 +11,17 @@ pub struct LogEntryFormatter<W: Write> {
     level_table: [&'static str; 7],
     value_printer: ValuePrinter,
     eol: &'static str,
+    skip_extras: bool,
 }
 
 impl<W: Write> LogEntryFormatter<W> {
     /// Creates a new `LogEntryFormatter`.
     pub fn new(use_color: bool, writer: W) -> Self {
+        Self::with_options(use_color, false, writer)
+    }
+
+    /// Creates a new `LogEntryFormatter` with options for skipping extras.
+    pub fn with_options(use_color: bool, skip_extras: bool, writer: W) -> Self {
         let (timestamp_format, level_table, eol) = if use_color {
             (
                 ansi_color!(fg:39),
@@ -38,6 +44,7 @@ impl<W: Write> LogEntryFormatter<W> {
             value_printer,
             eol,
             timestamp_format,
+            skip_extras,
         }
     }
 
@@ -63,7 +70,10 @@ impl<W: Write> LogEntryFormatter<W> {
         write!(self.writer, "{}", self.level_table[entry.level().as_u8()])?;
         write!(self.writer, "{}", entry.message)?;
         write!(self.writer, "{}", self.eol)?;
-        self.format_extras_collection(&entry.extras)
+        if !self.skip_extras {
+            self.format_extras_collection(&entry.extras)?;
+        }
+        Ok(())
     }
 
     /// Formats a number of empty lines and writes it to the writer.

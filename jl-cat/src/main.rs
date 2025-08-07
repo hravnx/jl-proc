@@ -17,7 +17,7 @@ fn main() -> std::result::Result<(), anyhow::Error> {
 
     let stdout = std::io::stdout();
     let use_color = stdout.is_terminal() && std::env::var("NO_COLOR").is_err();
-    let mut formatter = LogEntryFormatter::new(use_color, stdout.lock());
+    let mut formatter = LogEntryFormatter::with_options(use_color, cli.no_extras, stdout.lock());
 
     let processor = LogEntryProcessor::new(options);
     if cli.use_std_input() {
@@ -55,6 +55,9 @@ struct Cli {
     /// Start a new session when the message starts with this string.
     #[arg(short, long)]
     session_start: Option<String>,
+    /// Skip printing extras (additional fields beyond timestamp, level, message).
+    #[arg(long)]
+    no_extras: bool,
 }
 
 impl Cli {
