@@ -94,4 +94,6 @@ Tests are included throughout the codebase using standard Rust `#[cfg(test)]` mo
 
 ## Commit Guidelines
 
-- Do not mention claude or claude code in commit messages
+- Ensure that commit messages are clear and descriptive, focusing on the changes made rather than mentioning specific tools or code names.
+- Conform to standard Rust commit message conventions, such as using the imperative mood (e.g., "Fix bug in log parsing" instead of "Fixed bug in log parsing").
+- Conform to standard git commit message conventions.
