@@ -55,7 +55,7 @@ impl SeverityLevel {
 /// assert_eq!(log_entry.timestamp_short(), "12:34:56.123");
 /// assert_eq!(log_entry.level(), SeverityLevel::Info);
 /// assert_eq!(log_entry.message, "This is a log message");
-/// assert_eq!(log_entry.extra.len(), 2);
+/// assert_eq!(log_entry.extras.len(), 2);
 /// ```
 #[derive(Deserialize, Debug)]
 #[allow(unused)]

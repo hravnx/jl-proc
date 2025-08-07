@@ -99,8 +99,8 @@ mod tests {
         let result = processor.process_entries(entries.into_iter(), "test.log", &mut formatter);
         assert!(result.is_ok());
         let output_str = String::from_utf8(output).unwrap();
-        let expected = "10:32:51.123 [info]  A log message\n\
-10:32:53.456 [warn]  Another log message\n";
+        let expected = "10:32:51.123 [inf] A log message\n\
+10:32:53.456 [wrn] Another log message\n";
         assert_eq!(output_str, expected);
     }
 }
