@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{collections::HashMap, io::Write};
 
 use crate::{LogEntry, ansi_color};
 
@@ -9,6 +9,7 @@ pub struct LogEntryFormatter<W: Write> {
     writer: W,
     timestamp_format: &'static str,
     level_table: [&'static str; 7],
+
     eol: &'static str,
 }
 
@@ -17,7 +18,7 @@ impl<W: Write> LogEntryFormatter<W> {
     pub fn new(use_color: bool, writer: W) -> Self {
         let (timestamp_format, level_table, eol) = if use_color {
             (
-                ansi_color!(fg:4),
+                ansi_color!(fg:39),
                 DEFAULT_LEVEL_TABLE_COLOR,
                 concat!(ansi_color!(), "\n"),
             )
@@ -32,6 +33,17 @@ impl<W: Write> LogEntryFormatter<W> {
         }
     }
 
+    pub fn format_session_start(&mut self, entry: &LogEntry) -> std::io::Result<()> {
+        writeln!(
+            self.writer,
+            "------------ New session started {}{} {}",
+            self.timestamp_format,
+            &entry.timestamp[..10],
+            &entry.timestamp[11..],
+        )?;
+        Ok(())
+    }
+
     /// Formats a single log entry and writes it to the writer.
     pub fn format_entry(&mut self, entry: &LogEntry) -> std::io::Result<()> {
         write!(
@@ -42,7 +54,8 @@ impl<W: Write> LogEntryFormatter<W> {
         )?;
         write!(self.writer, "{}", self.level_table[entry.level().as_u8()])?;
         write!(self.writer, "{}", entry.message)?;
-        write!(self.writer, "{}", self.eol)
+        write!(self.writer, "{}", self.eol)?;
+        self.format_extras_collection(&entry.extras)
     }
 
     /// Formats a number of empty lines and writes it to the writer.
@@ -52,6 +65,22 @@ impl<W: Write> LogEntryFormatter<W> {
             "{}: {} empty lines skipped -----------",
             source, n
         )
+    }
+
+    /// Formats the extras collection, if not empty
+    pub fn format_extras_collection(
+        &mut self,
+        extra: &HashMap<String, serde_json::Value>,
+    ) -> std::io::Result<()> {
+        if !extra.is_empty() {
+            write!(
+                self.writer,
+                "{}",
+                serde_json::to_string_pretty(extra).unwrap()
+            )?;
+            write!(self.writer, "{}", self.eol)?;
+        }
+        Ok(())
     }
 
     /// Formats a read error and writes it to the writer.
@@ -82,24 +111,24 @@ impl<W: Write> LogEntryFormatter<W> {
 // --------------------------------------------------------------------------
 
 const DEFAULT_LEVEL_TABLE: [&str; 7] = [
-    " [fatal] ", // Fatal
-    " [error] ", // Error
-    " [warn]  ", // Warning
-    " [info]  ", // Info
-    " [debug] ", // Debug
-    " [verb]  ", // Verbose
-    " [other] ", // Other
+    " [ftl] ", // Fatal
+    " [err] ", // Error
+    " [wrn] ", // Warning
+    " [inf] ", // Info
+    " [dbg] ", // Debug
+    " [vrb] ", // Verbose
+    " [unk] ", // Other
 ];
 
 // See color table here https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
 //
 // Color names are from https://colornamer.robertcooper.me/
 const DEFAULT_LEVEL_TABLE_COLOR: [&str; 7] = [
-    concat!(ansi_color!(fg: 11, bg: 9), " [fatal] "), // Fatal ->  Yellow Red on red bg
-    concat!(ansi_color!(fg: 9), " [error] "),         // Error -> Red
-    concat!(ansi_color!(fg: 11), " [warn]  "),        // Warning -> Yellow
-    concat!(ansi_color!(fg: 254), " [info]  "),       // Info -> Titanium White
-    concat!(ansi_color!(fg: 6), " [verb]  "),         // Verbose -> Teal
-    concat!(ansi_color!(fg: 27), " [debug] "),        // Debug -> Bright Blue
-    concat!(ansi_color!(fg: 5), " [other] "),         // Other -> Purple
+    concat!(ansi_color!(fg: 11, bg: 9), " [ftl] "), // Fatal ->  Yellow Red on red bg
+    concat!(ansi_color!(fg: 9), " [err] "),         // Error -> Red
+    concat!(ansi_color!(fg: 11), " [wrn] "),        // Warning -> Yellow
+    concat!(ansi_color!(fg: 2), " [inf] ", ansi_color!(fg: 254)), // Info -> Titanium White
+    concat!(ansi_color!(fg: 6), " [vrb] "),         // Verbose -> Teal
+    concat!(ansi_color!(fg: 27), " [dbg] "),        // Debug -> Bright Blue
+    concat!(ansi_color!(fg: 5), " [unk] "),         // Other -> Purple
 ];
