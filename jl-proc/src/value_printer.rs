@@ -1,6 +1,6 @@
-use std::io::{Result, Write};
-use serde_json::Value;
 use crate::ansi_color;
+use serde_json::Value;
+use std::io::{Result, Write};
 
 /// Configuration for pretty printing JSON values
 pub struct ValuePrinterConfig {
@@ -38,20 +38,27 @@ pub struct ValuePrinter {
 impl ValuePrinter {
     /// Create a new ValuePrinter with the given configuration
     pub fn new(config: ValuePrinterConfig) -> Self {
-        let (key_color, string_color, number_color, boolean_color, null_color, punctuation_color, reset_color) = 
-            if config.use_color {
-                (
-                    ansi_color!(fg: 33),  // Blue for keys
-                    ansi_color!(fg: 2),   // Green for strings  
-                    ansi_color!(fg: 11),  // Yellow for numbers
-                    ansi_color!(fg: 9),   // Red for booleans
-                    ansi_color!(fg: 8),   // Gray for null
-                    ansi_color!(fg: 7),   // Light gray for punctuation
-                    ansi_color!(),        // Reset
-                )
-            } else {
-                ("", "", "", "", "", "", "")
-            };
+        let (
+            key_color,
+            string_color,
+            number_color,
+            boolean_color,
+            null_color,
+            punctuation_color,
+            reset_color,
+        ) = if config.use_color {
+            (
+                ansi_color!(fg: 33), // Blue for keys
+                ansi_color!(fg: 2),  // Green for strings
+                ansi_color!(fg: 11), // Yellow for numbers
+                ansi_color!(fg: 9),  // Red for booleans
+                ansi_color!(fg: 8),  // Gray for null
+                ansi_color!(fg: 7),  // Light gray for punctuation
+                ansi_color!(),       // Reset
+            )
+        } else {
+            ("", "", "", "", "", "", "")
+        };
 
         Self {
             config,
@@ -71,7 +78,12 @@ impl ValuePrinter {
     }
 
     /// Print object contents without the top-level curly braces, with custom base indentation
-    pub fn print_object_contents<W: Write>(&self, writer: &mut W, obj: &serde_json::Map<String, Value>, base_indent: usize) -> Result<()> {
+    pub fn print_object_contents<W: Write>(
+        &self,
+        writer: &mut W,
+        obj: &serde_json::Map<String, Value>,
+        base_indent: usize,
+    ) -> Result<()> {
         if obj.is_empty() {
             return Ok(());
         }
@@ -87,13 +99,21 @@ impl ValuePrinter {
                 if i > 0 {
                     write!(writer, "{}, {}", self.punctuation_color, self.reset_color)?;
                 }
-                write!(writer, "{}{}{}:{} ", self.key_color, key, self.punctuation_color, self.reset_color)?;
+                write!(
+                    writer,
+                    "{}{}{}:{} ",
+                    self.key_color, key, self.punctuation_color, self.reset_color
+                )?;
                 self.print_value(writer, value, base_indent)?;
             }
         } else {
             for (i, (key, value)) in entries.iter().enumerate() {
                 self.write_indent(writer, base_indent)?;
-                write!(writer, "{}{}{}:{} ", self.key_color, key, self.punctuation_color, self.reset_color)?;
+                write!(
+                    writer,
+                    "{}{}{}:{} ",
+                    self.key_color, key, self.punctuation_color, self.reset_color
+                )?;
                 self.print_value(writer, value, base_indent + 1)?;
                 if i < entries.len() - 1 {
                     write!(writer, "{},{}", self.punctuation_color, self.reset_color)?;
@@ -167,7 +187,12 @@ impl ValuePrinter {
     }
 
     /// Print a JSON object
-    fn print_object<W: Write>(&self, writer: &mut W, obj: &serde_json::Map<String, Value>, indent: usize) -> Result<()> {
+    fn print_object<W: Write>(
+        &self,
+        writer: &mut W,
+        obj: &serde_json::Map<String, Value>,
+        indent: usize,
+    ) -> Result<()> {
         write!(writer, "{}{{{}", self.punctuation_color, self.reset_color)?;
 
         if obj.is_empty() {
@@ -185,14 +210,22 @@ impl ValuePrinter {
                 if i > 0 {
                     write!(writer, "{}, {}", self.punctuation_color, self.reset_color)?;
                 }
-                write!(writer, "{}{}{}:{} ", self.key_color, key, self.punctuation_color, self.reset_color)?;
+                write!(
+                    writer,
+                    "{}{}{}:{} ",
+                    self.key_color, key, self.punctuation_color, self.reset_color
+                )?;
                 self.print_value(writer, value, indent)?;
             }
         } else {
             for (i, (key, value)) in entries.iter().enumerate() {
                 writeln!(writer)?;
                 self.write_indent(writer, indent + 1)?;
-                write!(writer, "{}{}{}:{} ", self.key_color, key, self.punctuation_color, self.reset_color)?;
+                write!(
+                    writer,
+                    "{}{}{}:{} ",
+                    self.key_color, key, self.punctuation_color, self.reset_color
+                )?;
                 self.print_value(writer, value, indent + 1)?;
                 if i < entries.len() - 1 {
                     write!(writer, "{},{}", self.punctuation_color, self.reset_color)?;
@@ -217,7 +250,13 @@ impl ValuePrinter {
     /// Determine if an array should be formatted compactly (on one line)
     fn should_format_compact_array(&self, arr: &[Value]) -> bool {
         // Compact if empty or all elements are simple (non-container) values
-        arr.is_empty() || arr.iter().all(|v| matches!(v, Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_)))
+        arr.is_empty()
+            || arr.iter().all(|v| {
+                matches!(
+                    v,
+                    Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_)
+                )
+            })
     }
 
     /// Determine if an object should be formatted compactly (on one line)
@@ -227,14 +266,20 @@ impl ValuePrinter {
             return true;
         }
 
-        let all_simple = obj.values().all(|v| matches!(v, Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_)));
-        
+        let all_simple = obj.values().all(|v| {
+            matches!(
+                v,
+                Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_)
+            )
+        });
+
         if !all_simple {
             return false;
         }
 
         // Rough estimate of output length
-        let estimated_len: usize = obj.iter()
+        let estimated_len: usize = obj
+            .iter()
             .map(|(k, v)| k.len() + self.estimate_value_length(v) + 5) // +5 for quotes, colon, comma, spaces
             .sum();
 
@@ -244,12 +289,12 @@ impl ValuePrinter {
     /// Estimate the display length of a value (for compact formatting decisions)
     fn estimate_value_length(&self, value: &Value) -> usize {
         match value {
-            Value::Null => 4, // "null"
-            Value::Bool(true) => 4, // "true"  
+            Value::Null => 4,        // "null"
+            Value::Bool(true) => 4,  // "true"
             Value::Bool(false) => 5, // "false"
             Value::Number(n) => n.to_string().len(),
-            Value::String(s) => s.len() + 2, // +2 for quotes
-            Value::Array(arr) => arr.len() * 10, // rough estimate
+            Value::String(s) => s.len() + 2,      // +2 for quotes
+            Value::Array(arr) => arr.len() * 10,  // rough estimate
             Value::Object(obj) => obj.len() * 20, // rough estimate
         }
     }
@@ -300,7 +345,9 @@ mod tests {
         let printer = ValuePrinter::new(ValuePrinterConfig::default());
         let mut output = Vec::new();
 
-        printer.print(&mut output, &json!({"a": 1, "b": 2})).unwrap();
+        printer
+            .print(&mut output, &json!({"a": 1, "b": 2}))
+            .unwrap();
         let result = String::from_utf8(output).unwrap();
         // Note: HashMap iteration order is not guaranteed, so we check for both possibilities
         assert!(result == "{a: 1, b: 2}" || result == "{b: 2, a: 1}");
@@ -321,7 +368,7 @@ mod tests {
 
         printer.print(&mut output, &nested).unwrap();
         let result = String::from_utf8(output).unwrap();
-        
+
         // Should have multi-line formatting for complex structures
         assert!(result.contains('\n'));
         assert!(result.contains("users"));
@@ -333,11 +380,14 @@ mod tests {
         let printer = ValuePrinter::new(ValuePrinterConfig::default());
         let mut output = Vec::new();
 
-        let obj = json!({"key1": "value1", "key2": 42}).as_object().unwrap().clone();
-        
+        let obj = json!({"key1": "value1", "key2": 42})
+            .as_object()
+            .unwrap()
+            .clone();
+
         printer.print_object_contents(&mut output, &obj, 2).unwrap();
         let result = String::from_utf8(output).unwrap();
-        
+
         // Should not contain curly braces
         assert!(!result.contains('{'));
         assert!(!result.contains('}'));

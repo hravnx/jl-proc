@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io::Write};
 
-use crate::{LogEntry, ansi_color, ValuePrinter, ValuePrinterConfig};
+use crate::{LogEntry, ValuePrinter, ValuePrinterConfig, ansi_color};
 
 // --------------------------------------------------------------------------
 
@@ -31,7 +31,7 @@ impl<W: Write> LogEntryFormatter<W> {
         } else {
             ("", DEFAULT_LEVEL_TABLE, "\n")
         };
-        
+
         let value_printer = ValuePrinter::new(ValuePrinterConfig {
             use_color,
             indent_size: 2,
@@ -80,8 +80,7 @@ impl<W: Write> LogEntryFormatter<W> {
     pub fn format_empty_lines(&mut self, n: usize, source: &str) -> std::io::Result<()> {
         writeln!(
             self.writer,
-            "{}: {} empty lines skipped -----------",
-            source, n
+            "{source}: {n} empty lines skipped -----------"
         )
     }
 
@@ -91,8 +90,10 @@ impl<W: Write> LogEntryFormatter<W> {
         extra: &HashMap<String, serde_json::Value>,
     ) -> std::io::Result<()> {
         if !extra.is_empty() {
-            let obj: serde_json::Map<String, serde_json::Value> = extra.clone().into_iter().collect();
-            self.value_printer.print_object_contents(&mut self.writer, &obj, 2)?;
+            let obj: serde_json::Map<String, serde_json::Value> =
+                extra.clone().into_iter().collect();
+            self.value_printer
+                .print_object_contents(&mut self.writer, &obj, 2)?;
         }
         Ok(())
     }
@@ -104,7 +105,7 @@ impl<W: Write> LogEntryFormatter<W> {
         source: &str,
         error: std::io::Error,
     ) -> std::io::Result<()> {
-        writeln!(self.writer, "{}({}): Read error {}", source, line_no, error)
+        writeln!(self.writer, "{source}({line_no}): Read error {error}")
     }
 
     /// Formats a parse error and writes it to the writer.
@@ -116,8 +117,7 @@ impl<W: Write> LogEntryFormatter<W> {
     ) -> std::io::Result<()> {
         writeln!(
             self.writer,
-            "{}({}): Parse error {}",
-            source, line_no, error
+            "{source}({line_no}): Parse error {error}"
         )
     }
 }
