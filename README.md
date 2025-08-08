@@ -9,7 +9,7 @@ This project provides tools for parsing, processing, and displaying JSON logs in
 ### Components
 
 - **`jl-proc`** - Core library for JSON log processing and formatting
-- **`jl-cat`** - Command-line tool for displaying JSON logs with color output
+- **`jl-cat`** - Command-line tool for displaying JSON logs with color output ([README](jl-cat/README.md))
 
 ## Quick Start
 
